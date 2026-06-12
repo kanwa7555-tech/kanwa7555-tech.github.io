@@ -61,7 +61,7 @@
       { id: 4, name: "اکانت برنز Starter", level: "برنز", gems: 0, skins: 1, price: 60000, img: "🎮", desc: "لول ۲۲، ۱ اسکین" },
     ];
     const DEFAULT_DEALS = [
-      { id: 1, user: "ادمین", text: "به گپ معامله خوش اومدید!", time: "12:00", img: null, type: "admin" },
+      { id: 1, user: "ادمین", text: "به گپ معامله خوش اومدید! برای ورود کد دعوت از ادمین بگیرید.", time: "12:00", img: null, type: "admin" },
     ];
 
     function loadState(key, def) { const s = localStorage.getItem(key); return s ? JSON.parse(s) : def; }
@@ -75,11 +75,11 @@
       const [deals, setDeals] = useState(() => loadState("ff_deals", DEFAULT_DEALS));
       const [pms, setPms] = useState(() => loadState("ff_pms", {}));
       const [bannedUsers, setBannedUsers] = useState(() => loadState("ff_banned", []));
-      const [validCodes, setValidCodes] = useState(() => loadState("ff_codes", ["WELCOME"]));
+      const [validCodes, setValidCodes] = useState(() => loadState("ff_codes", []));
       const [page, setPage] = useState("shop");
       const [selAcc, setSelAcc] = useState(null);
       const [buyStep, setBuyStep] = useState(1);
-      const [buyForm, setBuyForm] = useState({ name: "", phone: "", ign: "", note: "" });
+      const [buyForm, setBuyForm] = useState({ name: "", phone: "", accountId: "", ign: "", note: "" });
       const [rcFile, setRcFile] = useState(null);
       const [rcPrev, setRcPrev] = useState(null);
       const [curOrder, setCurOrder] = useState(null);
@@ -118,11 +118,11 @@
       useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [deals]);
 
       const showToast = (m) => { setToastMsg(m); setTimeout(() => setToastMsg(""), 2500); };
-      const openBuy = (acc) => { setSelAcc(acc); setBuyStep(1); setBuyForm({ name: "", phone: "", ign: "", note: "" }); setRcFile(null); setRcPrev(null); setCurOrder(null); };
+      const openBuy = (acc) => { setSelAcc(acc); setBuyStep(1); setBuyForm({ name: "", phone: "", accountId: "", ign: "", note: "" }); setRcFile(null); setRcPrev(null); setCurOrder(null); };
       const handleRcUpload = (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { setRcFile(ev.target.result); setRcPrev(ev.target.result); }; r.readAsDataURL(f); };
-      const submitOrder = () => { if (!buyForm.name || !buyForm.phone || !rcFile) return; const id = genOid(); setOrders(prev => [{ id, account: selAcc, ...buyForm, receiptImg: rcFile, date: new Date().toLocaleString("fa-IR"), status: "در انتظار تایید" }, ...prev]); setCurOrder({ id }); setBuyStep(2); showToast("سفارش ثبت شد!"); };
+      const submitOrder = () => { if (!buyForm.name || !buyForm.phone || !buyForm.accountId || !rcFile) return; const id = genOid(); setOrders(prev => [{ id, account: selAcc, ...buyForm, receiptImg: rcFile, date: new Date().toLocaleString("fa-IR"), status: "در انتظار تایید" }, ...prev]); setCurOrder({ id }); setBuyStep(2); showToast("سفارش ثبت شد!"); };
       const confirmOrder = (id) => { setOrders(prev => prev.map(o => o.id === id ? { ...o, status: "تایید شده" } : o)); showToast("تایید شد"); };
-      const joinChat = () => { if (!chatUsername.trim()) { setChatCodeErr("نام کاربری لازم"); return; } if (!validCodes.includes(chatCode.toUpperCase())) { setChatCodeErr("کد دعوت اشتباه"); return; } if (bannedUsers.includes(chatUsername.trim())) { setChatCodeErr("شما بن شدید"); return; } setChatJoined(true); setDeals(prev => [...prev, { id: Date.now(), user: "سیستم", text: chatUsername.trim() + " وارد شد", time: ts(), img: null, type: "system" }]); };
+      const joinChat = () => { if (!chatUsername.trim()) { setChatCodeErr("نام کاربری لازم"); return; } if (!validCodes.includes(chatCode.toUpperCase())) { setChatCodeErr("کد دعوت اشتباه است"); return; } if (bannedUsers.includes(chatUsername.trim())) { setChatCodeErr("شما بن شدید"); return; } setChatJoined(true); setDeals(prev => [...prev, { id: Date.now(), user: "سیستم", text: chatUsername.trim() + " وارد گپ شد", time: ts(), img: null, type: "system" }]); };
       const sendDeal = () => { if (!chatInput.trim() || bannedUsers.includes(chatUsername)) return; setDeals(prev => [...prev, { id: Date.now(), user: chatUsername, text: chatInput.trim(), time: ts(), img: null, type: "user" }]); setChatInput(""); };
       const sendImgInChat = (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { setDeals(prev => [...prev, { id: Date.now(), user: chatUsername, text: "تصویر", time: ts(), img: ev.target.result, type: "user" }]); }; r.readAsDataURL(f); };
       const deleteMsg = (id) => { setDeals(prev => prev.filter(m => m.id !== id)); showToast("پیام حذف شد"); };
@@ -135,6 +135,7 @@
       const deleteAcc = (id) => { setAccounts(prev => prev.filter(a => a.id !== id)); showToast("حذف شد"); };
       const addAccount = () => { if (!newAcc.name || !newAcc.price) return; setAccounts(prev => [...prev, { id: Date.now(), ...newAcc, price: parseInt(newAcc.price), gems: parseInt(newAcc.gems) || 0, skins: parseInt(newAcc.skins) || 0, img: "🎮" }]); setNewAcc({ name: "", level: "برنز", gems: "", skins: "", price: "", desc: "" }); setShowAddAcc(false); showToast("اکانت اضافه شد"); };
       const genInvCode = () => { const c = genCode(); setValidCodes(prev => [...prev, c]); setNewCode(c); showToast("کد: " + c); };
+      const deleteCode = (code) => { setValidCodes(prev => prev.filter(c => c !== code)); showToast("کد حذف شد"); };
       const changeAdminPassword = () => { if (newAdminPass.trim().length < 4) { showToast("حداقل ۴ کاراکتر"); return; } setAdminPass(newAdminPass); setNewAdminPass(""); setAdminSettingsOpen(false); showToast("رمز تغییر کرد"); };
       const pmUsers = Object.keys(pms).filter(u => pms[u]?.length > 0);
 
@@ -176,7 +177,7 @@
               {!chatJoined ? (
                 <div style={{ background: "#12121f", padding: 20, borderRadius: 16, marginTop: 12 }}>
                   <input placeholder="نام کاربری" value={chatUsername} onChange={e => setChatUsername(e.target.value)} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #333", borderRadius: 10, padding: 10, marginBottom: 8, color: "#fff" }} />
-                  <input placeholder="کد دعوت (WELCOME)" value={chatCode} onChange={e => setChatCode(e.target.value.toUpperCase())} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #333", borderRadius: 10, padding: 10, marginBottom: 12, color: "#fff" }} />
+                  <input placeholder="کد دعوت (از ادمین بگیرید)" value={chatCode} onChange={e => setChatCode(e.target.value.toUpperCase())} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #333", borderRadius: 10, padding: 10, marginBottom: 12, color: "#fff" }} />
                   <button className="bprim" onClick={joinChat}>ورود به گپ</button>
                   {chatCodeErr && <div style={{ color: "red", marginTop: 8 }}>{chatCodeErr}</div>}
                 </div>
@@ -211,7 +212,7 @@
             <div style={{ padding: 16 }}>
               <h2 style={{ color: "#ff6b00", fontSize: 18 }}>سفارشات من</h2>
               {orders.length === 0 ? <div className="empty">سفارشی نیست</div> : orders.map(o => (
-                <div key={o.id} className="oc"><div><strong>{o.id}</strong> - {o.account.name} - {fmtP(o.account.price)}</div><div>{o.name}</div>{o.receiptImg && <img src={o.receiptImg} style={{ width: 60, borderRadius: 6, marginTop: 6 }} onClick={() => setZoomedImg(o.receiptImg)} />}</div>
+                <div key={o.id} className="oc"><div><strong>{o.id}</strong> - {o.account.name} - {fmtP(o.account.price)}</div><div>{o.name}</div><div>آیدی اکانت: {o.accountId}</div>{o.receiptImg && <img src={o.receiptImg} style={{ width: 60, borderRadius: 6, marginTop: 6 }} onClick={() => setZoomedImg(o.receiptImg)} />}</div>
               ))}
             </div>
           )}
@@ -228,7 +229,7 @@
               {adminSettingsOpen && <div style={{ background: "#1a1a2e", padding: 12, borderRadius: 12, margin: "10px 0" }}><input type="password" placeholder="رمز جدید" value={newAdminPass} onChange={e => setNewAdminPass(e.target.value)} style={{ width: "100%", padding: 8, marginBottom: 8, borderRadius: 8, border: "1px solid #333", background: "#0a0a0f", color: "#fff" }} /><button className="bprim" onClick={changeAdminPassword}>ذخیره رمز</button></div>}
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>{[["orders","سفارشات"],["chat","گپ"],["pm","پیام‌ها"],["accounts","اکانت‌ها"],["codes","کدها"]].map(([k,v]) => <button key={k} className={`adm-tab`} onClick={()=>setAdmTab(k)} style={{ background: "#1a1a2e", border: admTab===k?"2px solid #ff6b00":"2px solid transparent", padding: "5px 12px", borderRadius: 30, color: "#fff", cursor:"pointer" }}>{v}</button>)}</div>
               
-              {admTab==="orders" && orders.map(o=><div key={o.id} className="oc"><div>{o.id} - {o.account.name} - {fmtP(o.account.price)}</div><div>{o.name} | {o.phone}</div>{o.receiptImg && <img src={o.receiptImg} style={{ width: 50 }} onClick={()=>setZoomedImg(o.receiptImg)} />}{o.status!=="تایید شده" && <button onClick={()=>confirmOrder(o.id)} style={{ background:"#0a0", border:"none", padding:"4px 12px", borderRadius:6, marginTop:6, color:"#fff" }}>تایید</button>}</div>)}
+              {admTab==="orders" && orders.map(o=><div key={o.id} className="oc"><div>{o.id} - {o.account.name} - {fmtP(o.account.price)}</div><div>{o.name} | {o.phone} | آیدی اکانت: {o.accountId}</div>{o.receiptImg && <img src={o.receiptImg} style={{ width: 50 }} onClick={()=>setZoomedImg(o.receiptImg)} />}{o.status!=="تایید شده" && <button onClick={()=>confirmOrder(o.id)} style={{ background:"#0a0", border:"none", padding:"4px 12px", borderRadius:6, marginTop:6, color:"#fff" }}>تایید</button>}</div>)}
               
               {admTab==="chat" && (
                 <>
@@ -258,14 +259,28 @@
               
               {admTab==="accounts" && (<><button onClick={()=>setShowAddAcc(!showAddAcc)} style={{background:"#ff6b00", border:"none", padding:"8px 16px", borderRadius:8, marginBottom:12}}>+ اکانت جدید</button>{showAddAcc && (<div style={{background:"#12121f", padding:12, margin:"12px 0"}}><input placeholder="نام" value={newAcc.name} onChange={e=>setNewAcc({...newAcc,name:e.target.value})} style={{width:"100%", marginBottom:6, padding:8, background:"#1a1a2e", border:"1px solid #333", borderRadius:8}}/><input placeholder="قیمت" type="number" value={newAcc.price} onChange={e=>setNewAcc({...newAcc,price:e.target.value})} style={{width:"100%", marginBottom:6, padding:8, background:"#1a1a2e", border:"1px solid #333", borderRadius:8}}/><button className="bprim" onClick={addAccount}>ذخیره</button></div>)}<div>{accounts.map(a=><div key={a.id} style={{background:"#12121f", padding:12, marginBottom:8, borderRadius:12}}><div>{a.name} - {fmtP(a.price)}</div><div style={{display:"flex", gap:6, marginTop:6}}><input type="number" placeholder="قیمت جدید" value={editPrices[a.id]||""} onChange={e=>setEditPrices({...editPrices,[a.id]:e.target.value})} style={{width:"100px", background:"#1a1a2e", border:"1px solid #333", borderRadius:6, padding:4}}/><button onClick={()=>updatePrice(a.id)} style={{background:"#ff6b00", border:"none", padding:"4px 12px", borderRadius:6}}>ویرایش</button><button onClick={()=>deleteAcc(a.id)} style={{background:"#a00", border:"none", padding:"4px 12px", borderRadius:6}}>حذف</button></div></div>)}</div></>)}
               
-              {admTab==="codes" && (<><button onClick={genInvCode} style={{background:"#0a0", border:"none", padding:"8px 16px", borderRadius:8, marginBottom:8}}>کد جدید</button><div>کدهای فعال: {validCodes.join(", ")}</div><button onClick={()=>{const c=prompt("کد دستی"); if(c) setValidCodes(prev=>[...prev, c.toUpperCase()]);}} style={{background:"#ff6b00", marginTop:8, border:"none", padding:"6px 12px", borderRadius:8}}>افزودن کد</button><div style={{marginTop:12}}>بن‌شده‌ها: {bannedUsers.join(", ")}</div></>)}
+              {admTab==="codes" && (
+                <div>
+                  <button onClick={genInvCode} style={{background:"#0a0", border:"none", padding:"8px 16px", borderRadius:8, marginBottom:8}}>کد جدید</button>
+                  <div style={{marginTop:12}}>
+                    {validCodes.length === 0 && <div style={{color:"#aaa", marginBottom:8}}>هیچ کدی ساخته نشده. دکمه بالا را بزنید.</div>}
+                    {validCodes.map(code => (
+                      <div key={code} style={{display:"flex", justifyContent:"space-between", background:"#1a1a2e", padding:8, borderRadius:8, marginBottom:6, alignItems:"center"}}>
+                        <span style={{fontFamily:"monospace"}}>{code}</span>
+                        <button onClick={()=>deleteCode(code)} style={{background:"red", border:"none", borderRadius:6, padding:"4px 12px", color:"#fff"}}>حذف</button>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{marginTop:12}}>کاربران بن شده: {bannedUsers.map(u=><span key={u} style={{background:"#a00", padding:"2px 8px", borderRadius:20, margin:"0 4px"}}>{u}</span>)}</div>
+                </div>
+              )}
             </div>
           )}
 
           {selAcc && (
             <div className="mbg" onClick={e=>e.target===e.currentTarget&&setSelAcc(null)}>
               <div className="modal">
-                {buyStep===1 ? (<><h2>خرید {selAcc.name}</h2><div className="fld"><label>نام</label><input value={buyForm.name} onChange={e=>setBuyForm({...buyForm,name:e.target.value})} /></div><div className="fld"><label>شماره</label><input value={buyForm.phone} onChange={e=>setBuyForm({...buyForm,phone:e.target.value})} /></div><div className="fld"><label>رسید</label><div onClick={()=>rcRef.current?.click()} style={{border:"2px dashed #ff6b00", padding:12, textAlign:"center", borderRadius:12}}><input type="file" ref={rcRef} style={{display:"none"}} onChange={handleRcUpload} />{rcPrev?<img src={rcPrev} style={{maxWidth:"100%", maxHeight:100}}/>:"آپلود رسید"}</div></div><div style={{background:"#1a1a00", padding:12, borderRadius:12, margin:"10px 0"}}><div>شماره کارت: 6280-2314-9744-3886</div><div>به نام امیرحسین ویسمرادی</div><div style={{color:"#ffcc00"}}>{fmtP(selAcc.price)}</div></div><div style={{display:"flex", gap:8}}><button className="bsec" onClick={()=>setSelAcc(null)}>انصراف</button><button className="bprim" onClick={submitOrder} disabled={!buyForm.name||!buyForm.phone||!rcFile}>ثبت</button></div></>) : (<><h2>سفارش ثبت شد</h2>{curOrder && <div>کد پیگیری: {curOrder.id}</div>}<button className="bprim" onClick={()=>setSelAcc(null)} style={{marginTop:16}}>بستن</button></>)}
+                {buyStep===1 ? (<><h2>خرید {selAcc.name}</h2><div className="fld"><label>نام کامل</label><input value={buyForm.name} onChange={e=>setBuyForm({...buyForm,name:e.target.value})} /></div><div className="fld"><label>شماره تماس</label><input value={buyForm.phone} onChange={e=>setBuyForm({...buyForm,phone:e.target.value})} /></div><div className="fld"><label>آیدی اکانت (شناسه در بازی)</label><input value={buyForm.accountId} onChange={e=>setBuyForm({...buyForm,accountId:e.target.value})} placeholder="مثال: 12345678" /></div><div className="fld"><label>IGN / نام شخصیت (اختیاری)</label><input value={buyForm.ign} onChange={e=>setBuyForm({...buyForm,ign:e.target.value})} /></div><div className="fld"><label>رسید پرداخت</label><div onClick={()=>rcRef.current?.click()} style={{border:"2px dashed #ff6b00", padding:12, textAlign:"center", borderRadius:12}}><input type="file" ref={rcRef} style={{display:"none"}} onChange={handleRcUpload} />{rcPrev?<img src={rcPrev} style={{maxWidth:"100%", maxHeight:100}}/>:"آپلود رسید"}</div></div><div style={{background:"#1a1a00", padding:12, borderRadius:12, margin:"10px 0"}}><div>شماره کارت: 6280-2314-9744-3886</div><div>به نام امیرحسین ویسمرادی</div><div style={{color:"#ffcc00"}}>{fmtP(selAcc.price)}</div></div><div style={{display:"flex", gap:8}}><button className="bsec" onClick={()=>setSelAcc(null)}>انصراف</button><button className="bprim" onClick={submitOrder} disabled={!buyForm.name||!buyForm.phone||!buyForm.accountId||!rcFile}>ثبت سفارش</button></div></>) : (<><h2>سفارش ثبت شد</h2>{curOrder && <div>کد پیگیری: {curOrder.id}</div>}<button className="bprim" onClick={()=>setSelAcc(null)} style={{marginTop:16}}>بستن</button></>)}
               </div>
             </div>
           )}
