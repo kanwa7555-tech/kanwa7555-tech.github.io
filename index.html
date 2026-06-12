@@ -3,7 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
-  <title>FFShop | فروشگاه اکانت فری فایر</title>
+  <title>FFShop | فروشگاه اکانت فری فایر (آنلاین)</title>
+  <!-- اضافه کردن کتابخانه Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
@@ -49,33 +51,58 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
+    // ---------- تنظیمات Supabase ----------
+    const SUPABASE_URL = "https://ydqnlfmwsxwkqxrsrjop.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_a5cafDR41b0d_eOsqYiekw_2OqEfj0E";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // توابع کمکی
     function ts() { return new Date().toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }); }
     function fmtP(p) { return p.toLocaleString("fa-IR") + " تومان"; }
     function genCode() { return "INV-" + Math.random().toString(36).slice(2, 8).toUpperCase(); }
     function genOid() { return "FF-" + Date.now().toString().slice(-5) + "-" + Math.random().toString(36).slice(2, 4).toUpperCase(); }
 
+    // دیتاهای اولیه (محلی)
     const DEFAULT_ACCOUNTS = [
       { id: 1, name: "اکانت دایموند S1", level: "دایموند", gems: 2400, skins: 18, price: 850000, img: "💠", desc: "لول ۹۲، ۱۸ اسکین نادر" },
       { id: 2, name: "اکانت طلا Pro", level: "طلا", gems: 800, skins: 9, price: 320000, img: "🥇", desc: "لول ۶۵، ۹ اسکین" },
       { id: 3, name: "اکانت نقره Plus", level: "نقره", gems: 300, skins: 4, price: 150000, img: "🥈", desc: "لول ۴۰، ۴ اسکین" },
       { id: 4, name: "اکانت برنز Starter", level: "برنز", gems: 0, skins: 1, price: 60000, img: "🎮", desc: "لول ۲۲، ۱ اسکین" },
     ];
-    const DEFAULT_DEALS = [
-      { id: 1, user: "ادمین", text: "به گپ معامله خوش اومدید! برای ورود کد دعوت از ادمین بگیرید.", time: "12:00", img: null, type: "admin" },
-    ];
 
-    function loadState(key, def) { const s = localStorage.getItem(key); return s ? JSON.parse(s) : def; }
-    function saveState(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
-    function getAdminPass() { return localStorage.getItem("admin_pass") || "amir1234"; }
-    function setAdminPass(p) { localStorage.setItem("admin_pass", p); }
+    // تابع برای اطمینان از وجود جداول در supabase (با ایجاد رکوردهای پیش‌فرض)
+    async function initSupabaseTables() {
+      // بررسی جدول deals
+      const { data: dealsData, error: dealsError } = await supabase.from('deals').select('*').limit(1);
+      if (dealsError || !dealsData || dealsData.length === 0) {
+        // ایجاد یک پیام پیش‌فرض
+        await supabase.from('deals').insert([{ id: Date.now(), user: "ادمین", text: "به گپ خوش آمدید! برای ورود کد دعوت از ادمین بگیرید.", time: ts(), img: null, type: "admin" }]);
+      }
+      // بررسی جدول valid_codes
+      const { data: codesData, error: codesError } = await supabase.from('valid_codes').select('*').limit(1);
+      if (codesError || !codesData || codesData.length === 0) {
+        // بدون کد پیش‌فرض
+      }
+      // بررسی جدول banned_users
+      const { data: bannedData, error: bannedError } = await supabase.from('banned_users').select('*').limit(1);
+      if (bannedError || !bannedData || bannedData.length === 0) {
+        // خالی
+      }
+      // بررسی جدول orders (برای همگام‌سازی عمومی؟ فعلاً نمی‌خواهیم همه سفارشات عمومی باشد. بهتر است سفارشات خصوصی بماند. اما برای سادگی، ما سفارشات را عمومی نمی‌کنیم. فقط پیام‌ها، کدها، بن‌ها و پیام‌های خصوصی؟
+      // ما فقط deals, valid_codes, banned_users, pms را عمومی می‌کنیم.
+    }
 
+    // ---------- کامپوننت اصلی ----------
     function App() {
-      const [accounts, setAccounts] = useState(() => loadState("ff_accounts", DEFAULT_ACCOUNTS));
-      const [orders, setOrders] = useState(() => loadState("ff_orders", []));
-      const [deals, setDeals] = useState(() => loadState("ff_deals", DEFAULT_DEALS));
-      const [pms, setPms] = useState(() => loadState("ff_pms", {}));
-      const [bannedUsers, setBannedUsers] = useState(() => loadState("ff_banned", []));
-      const [validCodes, setValidCodes] = useState(() => loadState("ff_codes", []));
+      const [accounts, setAccounts] = useState(DEFAULT_ACCOUNTS);
+      const [orders, setOrders] = useState(() => JSON.parse(localStorage.getItem("ff_orders") || "[]"));
+      const [deals, setDeals] = useState([]);
+      const [pms, setPms] = useState({});
+      const [bannedUsers, setBannedUsers] = useState([]);
+      const [validCodes, setValidCodes] = useState([]);
+      const [loading, setLoading] = useState(true);
+      
+      // سایر state‌ها
       const [page, setPage] = useState("shop");
       const [selAcc, setSelAcc] = useState(null);
       const [buyStep, setBuyStep] = useState(1);
@@ -109,35 +136,101 @@
       const chatImgRef = useRef(null);
       const rcRef = useRef(null);
 
-      useEffect(() => { saveState("ff_accounts", accounts); }, [accounts]);
-      useEffect(() => { saveState("ff_orders", orders); }, [orders]);
-      useEffect(() => { saveState("ff_deals", deals); }, [deals]);
-      useEffect(() => { saveState("ff_pms", pms); }, [pms]);
-      useEffect(() => { saveState("ff_banned", bannedUsers); }, [bannedUsers]);
-      useEffect(() => { saveState("ff_codes", validCodes); }, [validCodes]);
-      useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [deals]);
+      // ذخیره سفارشات در localStorage
+      useEffect(() => { localStorage.setItem("ff_orders", JSON.stringify(orders)); }, [orders]);
 
+      // بارگذاری اولیه از supabase
+      async function loadData() {
+        try {
+          const [{ data: dealsData }, { data: codesData }, { data: bannedData }, { data: pmsData }] = await Promise.all([
+            supabase.from('deals').select('*').order('id', { ascending: true }),
+            supabase.from('valid_codes').select('*'),
+            supabase.from('banned_users').select('*'),
+            supabase.from('pms').select('*')
+          ]);
+          setDeals(dealsData || []);
+          setValidCodes((codesData || []).map(c => c.code));
+          setBannedUsers((bannedData || []).map(b => b.username));
+          const pmsObj = {};
+          (pmsData || []).forEach(pm => {
+            if (!pmsObj[pm.username]) pmsObj[pm.username] = [];
+            pmsObj[pm.username].push({ id: pm.id, from: pm.from, text: pm.text, time: pm.time });
+          });
+          setPms(pmsObj);
+        } catch(e) { console.error(e); } finally { setLoading(false); }
+      }
+
+      // اشتراک‌گذاری تغییرات زنده
+      useEffect(() => {
+        loadData();
+        // شنود رویدادهای realtime برای deals
+        const dealsChannel = supabase.channel('public:deals')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'deals' }, () => loadData())
+          .subscribe();
+        const codesChannel = supabase.channel('public:valid_codes')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'valid_codes' }, () => loadData())
+          .subscribe();
+        const bannedChannel = supabase.channel('public:banned_users')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'banned_users' }, () => loadData())
+          .subscribe();
+        const pmsChannel = supabase.channel('public:pms')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'pms' }, () => loadData())
+          .subscribe();
+        return () => {
+          supabase.removeChannel(dealsChannel);
+          supabase.removeChannel(codesChannel);
+          supabase.removeChannel(bannedChannel);
+          supabase.removeChannel(pmsChannel);
+        };
+      }, []);
+
+      // توابع تعامل با supabase
+      async function addDeal(deal) {
+        await supabase.from('deals').insert([deal]);
+      }
+      async function deleteDeal(id) {
+        await supabase.from('deals').delete().eq('id', id);
+      }
+      async function addCode(code) {
+        await supabase.from('valid_codes').insert([{ code }]);
+      }
+      async function removeCode(code) {
+        await supabase.from('valid_codes').delete().eq('code', code);
+      }
+      async function addBan(username) {
+        await supabase.from('banned_users').insert([{ username }]);
+      }
+      async function removeBan(username) {
+        await supabase.from('banned_users').delete().eq('username', username);
+      }
+      async function addPm(username, from, text, time) {
+        await supabase.from('pms').insert([{ username, from, text, time, id: Date.now() }]);
+      }
+
+      // توابع منطقی برنامه
       const showToast = (m) => { setToastMsg(m); setTimeout(() => setToastMsg(""), 2500); };
       const openBuy = (acc) => { setSelAcc(acc); setBuyStep(1); setBuyForm({ name: "", phone: "", accountId: "", ign: "", note: "" }); setRcFile(null); setRcPrev(null); setCurOrder(null); };
       const handleRcUpload = (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { setRcFile(ev.target.result); setRcPrev(ev.target.result); }; r.readAsDataURL(f); };
       const submitOrder = () => { if (!buyForm.name || !buyForm.phone || !buyForm.accountId || !rcFile) return; const id = genOid(); setOrders(prev => [{ id, account: selAcc, ...buyForm, receiptImg: rcFile, date: new Date().toLocaleString("fa-IR"), status: "در انتظار تایید" }, ...prev]); setCurOrder({ id }); setBuyStep(2); showToast("سفارش ثبت شد!"); };
       const confirmOrder = (id) => { setOrders(prev => prev.map(o => o.id === id ? { ...o, status: "تایید شده" } : o)); showToast("تایید شد"); };
-      const joinChat = () => { if (!chatUsername.trim()) { setChatCodeErr("نام کاربری لازم"); return; } if (!validCodes.includes(chatCode.toUpperCase())) { setChatCodeErr("کد دعوت اشتباه است"); return; } if (bannedUsers.includes(chatUsername.trim())) { setChatCodeErr("شما بن شدید"); return; } setChatJoined(true); setDeals(prev => [...prev, { id: Date.now(), user: "سیستم", text: chatUsername.trim() + " وارد گپ شد", time: ts(), img: null, type: "system" }]); };
-      const sendDeal = () => { if (!chatInput.trim() || bannedUsers.includes(chatUsername)) return; setDeals(prev => [...prev, { id: Date.now(), user: chatUsername, text: chatInput.trim(), time: ts(), img: null, type: "user" }]); setChatInput(""); };
-      const sendImgInChat = (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { setDeals(prev => [...prev, { id: Date.now(), user: chatUsername, text: "تصویر", time: ts(), img: ev.target.result, type: "user" }]); }; r.readAsDataURL(f); };
-      const deleteMsg = (id) => { setDeals(prev => prev.filter(m => m.id !== id)); showToast("پیام حذف شد"); };
-      const banUser = (uname) => { if (bannedUsers.includes(uname)) return; setBannedUsers(prev => [...prev, uname]); setDeals(prev => [...prev, { id: Date.now(), user: "سیستم", text: uname + " از گپ بن شد.", time: ts(), img: null, type: "system" }]); showToast("کاربر بن شد"); };
-      const sendAdminChat = () => { if (!admChatInput.trim()) return; setDeals(prev => [...prev, { id: Date.now(), user: "ادمین", text: admChatInput.trim(), time: ts(), img: null, type: "admin" }]); setAdmChatInput(""); };
-      const sendPm = () => { if (!pmInput.trim()) return; setPms(prev => ({ ...prev, [chatUsername]: [...(prev[chatUsername] || []), { id: Date.now(), from: "user", text: pmInput.trim(), time: ts() }] })); setPmInput(""); setShowPmModal(false); showToast("ارسال شد"); };
-      const sendAdminPm = (uname) => { if (!admPmInput.trim()) return; setPms(prev => ({ ...prev, [uname]: [...(prev[uname] || []), { id: Date.now(), from: "admin", text: admPmInput.trim(), time: ts() }] })); setAdmPmInput(""); showToast("پاسخ ارسال شد"); };
-      const handleAdminLogin = () => { if (adminPassInp === getAdminPass()) { setAdminLoggedIn(true); setLoginErr(""); setPage("admin"); } else setLoginErr("رمز اشتباه"); };
+      const joinChat = async () => { if (!chatUsername.trim()) { setChatCodeErr("نام کاربری لازم"); return; } if (!validCodes.includes(chatCode.toUpperCase())) { setChatCodeErr("کد دعوت اشتباه است"); return; } if (bannedUsers.includes(chatUsername.trim())) { setChatCodeErr("شما بن شدید"); return; } setChatJoined(true); await addDeal({ id: Date.now(), user: "سیستم", text: chatUsername.trim() + " وارد گپ شد", time: ts(), img: null, type: "system" }); };
+      const sendDeal = async () => { if (!chatInput.trim() || bannedUsers.includes(chatUsername)) return; await addDeal({ id: Date.now(), user: chatUsername, text: chatInput.trim(), time: ts(), img: null, type: "user" }); setChatInput(""); };
+      const sendImgInChat = async (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = async ev => { await addDeal({ id: Date.now(), user: chatUsername, text: "تصویر", time: ts(), img: ev.target.result, type: "user" }); }; r.readAsDataURL(f); };
+      const deleteMsg = async (id) => { await deleteDeal(id); showToast("پیام حذف شد"); };
+      const banUser = async (uname) => { if (bannedUsers.includes(uname)) return; await addBan(uname); showToast("کاربر بن شد"); };
+      const sendAdminChat = async () => { if (!admChatInput.trim()) return; await addDeal({ id: Date.now(), user: "ادمین", text: admChatInput.trim(), time: ts(), img: null, type: "admin" }); setAdmChatInput(""); };
+      const sendPm = async () => { if (!pmInput.trim()) return; await addPm(chatUsername, "user", pmInput.trim(), ts()); setPmInput(""); setShowPmModal(false); showToast("ارسال شد"); };
+      const sendAdminPm = async (uname) => { if (!admPmInput.trim()) return; await addPm(uname, "admin", admPmInput.trim(), ts()); setAdmPmInput(""); showToast("پاسخ ارسال شد"); };
+      const handleAdminLogin = () => { if (adminPassInp === (localStorage.getItem("admin_pass") || "amir1234")) { setAdminLoggedIn(true); setLoginErr(""); setPage("admin"); } else setLoginErr("رمز اشتباه"); };
       const updatePrice = (id) => { const p = parseInt(editPrices[id]); if (!p) return; setAccounts(prev => prev.map(a => a.id === id ? { ...a, price: p } : a)); showToast("قیمت آپدیت"); };
       const deleteAcc = (id) => { setAccounts(prev => prev.filter(a => a.id !== id)); showToast("حذف شد"); };
       const addAccount = () => { if (!newAcc.name || !newAcc.price) return; setAccounts(prev => [...prev, { id: Date.now(), ...newAcc, price: parseInt(newAcc.price), gems: parseInt(newAcc.gems) || 0, skins: parseInt(newAcc.skins) || 0, img: "🎮" }]); setNewAcc({ name: "", level: "برنز", gems: "", skins: "", price: "", desc: "" }); setShowAddAcc(false); showToast("اکانت اضافه شد"); };
-      const genInvCode = () => { const c = genCode(); setValidCodes(prev => [...prev, c]); setNewCode(c); showToast("کد: " + c); };
-      const deleteCode = (code) => { setValidCodes(prev => prev.filter(c => c !== code)); showToast("کد حذف شد"); };
-      const changeAdminPassword = () => { if (newAdminPass.trim().length < 4) { showToast("حداقل ۴ کاراکتر"); return; } setAdminPass(newAdminPass); setNewAdminPass(""); setAdminSettingsOpen(false); showToast("رمز تغییر کرد"); };
+      const genInvCode = async () => { const c = genCode(); await addCode(c); setNewCode(c); showToast("کد: " + c); };
+      const deleteCode = async (code) => { await removeCode(code); showToast("کد حذف شد"); };
+      const changeAdminPassword = () => { if (newAdminPass.trim().length < 4) { showToast("حداقل ۴ کاراکتر"); return; } localStorage.setItem("admin_pass", newAdminPass); setNewAdminPass(""); setAdminSettingsOpen(false); showToast("رمز تغییر کرد"); };
       const pmUsers = Object.keys(pms).filter(u => pms[u]?.length > 0);
+
+      if (loading) return <div style={{textAlign:"center",padding:"50px"}}>در حال بارگذاری...</div>;
 
       return (
         <div className="app">
@@ -292,11 +385,21 @@
           )}
 
           {zoomedImg && <div style={{position:"fixed", inset:0, background:"rgba(0,0,0,0.95)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:400}} onClick={()=>setZoomedImg(null)}><img src={zoomedImg} style={{maxWidth:"90vw", maxHeight:"90vh", borderRadius:12}} /></div>}
-          <footer className="footer">FFShop | فروشگاه اکانت فری فایر</footer>
+          <footer className="footer">FFShop | فروشگاه اکانت فری فایر (همگام‌سازی لحظه‌ای)</footer>
           {toastMsg && <div className="toast">{toastMsg}</div>}
         </div>
       );
     }
+
+    // مقداردهی اولیه supabase (ایجاد جداول در صورت نیاز)
+    (async () => {
+      try {
+        // فقط یک بار تلاش برای ایجاد جدول اگر وجود نداشت (در supabase باید از SQL استفاده کرد اما ما از insert ساده استفاده می‌کنیم تا حداقل یک رکورد وارد شود و جدول ساخته شود)
+        // بهتر است کاربر خودش در SQL Editor جداول را بسازد، اما برای سادگی کد بالا قبلاً ساختار را دارد.
+        console.log("Supabase ready");
+      } catch(e) { console.log(e); }
+    })();
+
     ReactDOM.createRoot(document.getElementById("root")).render(<App />);
   </script>
 </body>
