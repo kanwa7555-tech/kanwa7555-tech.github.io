@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes, viewport-fit=cover">
+  <title>FFShop | فروشگاه اکانت فری فایر</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body { direction: rtl; font-family: 'Vazirmatn', system-ui, sans-serif; background: #0a0a0f; color: #fff; overflow-x: hidden; width: 100%; }
+    .app { min-height: 100vh; background: #0a0a0f; display: flex; flex-direction: column; width: 100%; overflow-x: hidden; }
+    .hdr { background: linear-gradient(135deg,#0d0d1a,#1a0a00); border-bottom: 2px solid #ff6b00; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; position: sticky; top: 0; z-index: 100; }
+    .logo { font-size: 18px; font-weight: 900; background: linear-gradient(90deg,#ff6b00,#ffcc00); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .nav { display: flex; gap: 6px; flex-wrap: wrap; }
+    .nb { background: transparent; border: 1px solid #ff6b0055; color: #ff6b00; padding: 5px 10px; border-radius: 8px; cursor: pointer; font-size: 11px; transition: 0.2s; white-space: nowrap; }
+    .nb.on, .nb:hover { background: #ff6b00; color: #000; font-weight: 700; }
+    .hero { text-align: center; padding: 30px 16px; }
+    .hero h1 { font-size: clamp(22px,6vw,34px); background: linear-gradient(90deg,#ff6b00,#ffcc00); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .pgrid { display: grid; grid-template-columns: 1fr; gap: 14px; padding: 16px; width: 100%; }
+    @media (min-width: 560px) { .pgrid { grid-template-columns: repeat(2,1fr); } }
+    @media (min-width: 900px) { .pgrid { grid-template-columns: repeat(3,1fr); max-width: 1100px; margin: 0 auto; } }
+    .pcard { background: linear-gradient(135deg,#12121f,#1a1200); border: 1px solid #2a2a3a; border-radius: 16px; padding: 16px; }
+    .buy-btn { width: 100%; background: linear-gradient(135deg,#ff6b00,#cc3300); border: none; color: #fff; padding: 10px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+    .mbg { position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .modal { background: #12121f; border: 2px solid #ff6b00; border-radius: 20px; padding: 20px; width: 100%; max-width: 440px; max-height: 90vh; overflow-y: auto; }
+    .fld { margin-bottom: 12px; }
+    .fld label { display: block; font-size: 12px; color: #aaa; margin-bottom: 5px; }
+    .fld input, .fld textarea, .fld select { width: 100%; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; color: #fff; padding: 8px 12px; font-size: 13px; }
+    .bprim { background: linear-gradient(135deg,#ff6b00,#cc3300); border: none; color: #fff; padding: 10px; border-radius: 10px; font-weight: 700; cursor: pointer; width: 100%; }
+    .bsec { background: #2a2a3a; border: none; color: #aaa; padding: 10px; border-radius: 10px; cursor: pointer; width: 100%; }
+    .cbox { background: #0d0d18; border: 1px solid #2a2a3a; border-radius: 14px; height: 350px; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .msg { max-width: 85%; }
+    .admin-m .msg-bbl { background: #1e1e3a; border: 1px solid #ff6b0044; }
+    .user-m .msg-bbl { background: linear-gradient(135deg,#cc3300,#ff6b00); }
+    .msg-bbl { padding: 8px 12px; border-radius: 13px; font-size: 13px; word-break: break-word; }
+    .msg-img { max-width: 100%; border-radius: 8px; margin-top: 6px; cursor: pointer; }
+    .chat-ta { flex: 1; background: #1a1a2e; border: 1px solid #333; border-radius: 10px; color: #fff; padding: 8px; font-size: 13px; resize: none; height: 42px; }
+    .footer { background: #0d0d1a; padding: 20px; text-align: center; margin-top: auto; font-size: 11px; color: #555; }
+    .oc { background: #12121f; border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+    .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #00aa44; color: #fff; padding: 8px 16px; border-radius: 30px; font-size: 12px; z-index: 300; white-space: nowrap; }
+    button { cursor: pointer; }
+    .empty { text-align: center; padding: 40px 16px; color: #777; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    function ts() { return new Date().toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" }); }
+    function fmtP(p) { return p.toLocaleString("fa-IR") + " تومان"; }
+    function genCode() { return "INV-" + Math.random().toString(36).slice(2, 8).toUpperCase(); }
+    function genOid() { return "FF-" + Date.now().toString().slice(-5) + "-" + Math.random().toString(36).slice(2, 4).toUpperCase(); }
+
+    const DEFAULT_ACCOUNTS = [
+      { id: 1, name: "اکانت دایموند S1", level: "دایموند", gems: 2400, skins: 18, price: 850000, img: "💠", desc: "لول ۹۲، ۱۸ اسکین نادر" },
+      { id: 2, name: "اکانت طلا Pro", level: "طلا", gems: 800, skins: 9, price: 320000, img: "🥇", desc: "لول ۶۵، ۹ اسکین" },
+      { id: 3, name: "اکانت نقره Plus", level: "نقره", gems: 300, skins: 4, price: 150000, img: "🥈", desc: "لول ۴۰، ۴ اسکین" },
+      { id: 4, name: "اکانت برنز Starter", level: "برنز", gems: 0, skins: 1, price: 60000, img: "🎮", desc: "لول ۲۲، ۱ اسکین" },
+    ];
+    const DEFAULT_DEALS = [
+      { id: 1, user: "ادمین", text: "به گپ معامله خوش اومدید!", time: "12:00", img: null, type: "admin" },
+    ];
+
+    function loadState(key, def) { const s = localStorage.getItem(key); return s ? JSON.parse(s) : def; }
+    function saveState(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
+    function getAdminPass() { return localStorage.getItem("admin_pass") || "amir1234"; }
+    function setAdminPass(p) { localStorage.setItem("admin_pass", p); }
+
+    function App() {
+      const [accounts, setAccounts] = useState(() => loadState("ff_accounts", DEFAULT_ACCOUNTS));
+      const [orders, setOrders] = useState(() => loadState("ff_orders", []));
+      const [deals, setDeals] = useState(() => loadState("ff_deals", DEFAULT_DEALS));
+      const [pms, setPms] = useState(() => loadState("ff_pms", {}));
+      const [bannedUsers, setBannedUsers] = useState(() => loadState("ff_banned", []));
+      const [validCodes, setValidCodes] = useState(() => loadState("ff_codes", ["WELCOME"]));
+      const [page, setPage] = useState("shop");
+      const [selAcc, setSelAcc] = useState(null);
+      const [buyStep, setBuyStep] = useState(1);
+      const [buyForm, setBuyForm] = useState({ name: "", phone: "", ign: "", note: "" });
+      const [rcFile, setRcFile] = useState(null);
+      const [rcPrev, setRcPrev] = useState(null);
+      const [curOrder, setCurOrder] = useState(null);
+      const [adminLoggedIn, setAdminLoggedIn] = useState(false);
+      const [adminPassInp, setAdminPassInp] = useState("");
+      const [loginErr, setLoginErr] = useState("");
+      const [toastMsg, setToastMsg] = useState("");
+      const [zoomedImg, setZoomedImg] = useState(null);
+      const [chatJoined, setChatJoined] = useState(false);
+      const [chatCode, setChatCode] = useState("");
+      const [chatCodeErr, setChatCodeErr] = useState("");
+      const [chatUsername, setChatUsername] = useState("");
+      const [chatInput, setChatInput] = useState("");
+      const [admTab, setAdmTab] = useState("orders");
+      const [admChatInput, setAdmChatInput] = useState("");
+      const [editPrices, setEditPrices] = useState({});
+      const [showAddAcc, setShowAddAcc] = useState(false);
+      const [newAcc, setNewAcc] = useState({ name: "", level: "برنز", gems: "", skins: "", price: "", desc: "" });
+      const [newCode, setNewCode] = useState("");
+      const [selPmUser, setSelPmUser] = useState(null);
+      const [admPmInput, setAdmPmInput] = useState("");
+      const [pmInput, setPmInput] = useState("");
+      const [showPmModal, setShowPmModal] = useState(false);
+      const [adminSettingsOpen, setAdminSettingsOpen] = useState(false);
+      const [newAdminPass, setNewAdminPass] = useState("");
+      const chatEndRef = useRef(null);
+      const chatImgRef = useRef(null);
+      const rcRef = useRef(null);
+
+      useEffect(() => { saveState("ff_accounts", accounts); }, [accounts]);
+      useEffect(() => { saveState("ff_orders", orders); }, [orders]);
+      useEffect(() => { saveState("ff_deals", deals); }, [deals]);
+      useEffect(() => { saveState("ff_pms", pms); }, [pms]);
+      useEffect(() => { saveState("ff_banned", bannedUsers); }, [bannedUsers]);
+      useEffect(() => { saveState("ff_codes", validCodes); }, [validCodes]);
+      useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [deals]);
+
+      const showToast = (m) => { setToastMsg(m); setTimeout(() => setToastMsg(""), 2500); };
+      const openBuy = (acc) => { setSelAcc(acc); setBuyStep(1); setBuyForm({ name: "", phone: "", ign: "", note: "" }); setRcFile(null); setRcPrev(null); setCurOrder(null); };
+      const handleRcUpload = (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { setRcFile(ev.target.result); setRcPrev(ev.target.result); }; r.readAsDataURL(f); };
+      const submitOrder = () => { if (!buyForm.name || !buyForm.phone || !rcFile) return; const id = genOid(); setOrders(prev => [{ id, account: selAcc, ...buyForm, receiptImg: rcFile, date: new Date().toLocaleString("fa-IR"), status: "در انتظار تایید" }, ...prev]); setCurOrder({ id }); setBuyStep(2); showToast("سفارش ثبت شد!"); };
+      const confirmOrder = (id) => { setOrders(prev => prev.map(o => o.id === id ? { ...o, status: "تایید شده" } : o)); showToast("تایید شد"); };
+      const joinChat = () => { if (!chatUsername.trim()) { setChatCodeErr("نام کاربری لازم"); return; } if (!validCodes.includes(chatCode.toUpperCase())) { setChatCodeErr("کد دعوت اشتباه"); return; } if (bannedUsers.includes(chatUsername.trim())) { setChatCodeErr("شما بن شدید"); return; } setChatJoined(true); setDeals(prev => [...prev, { id: Date.now(), user: "سیستم", text: chatUsername.trim() + " وارد شد", time: ts(), img: null, type: "system" }]); };
+      const sendDeal = () => { if (!chatInput.trim() || bannedUsers.includes(chatUsername)) return; setDeals(prev => [...prev, { id: Date.now(), user: chatUsername, text: chatInput.trim(), time: ts(), img: null, type: "user" }]); setChatInput(""); };
+      const sendImgInChat = (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = ev => { setDeals(prev => [...prev, { id: Date.now(), user: chatUsername, text: "تصویر", time: ts(), img: ev.target.result, type: "user" }]); }; r.readAsDataURL(f); };
+      const deleteMsg = (id) => { setDeals(prev => prev.filter(m => m.id !== id)); showToast("پیام حذف شد"); };
+      const banUser = (uname) => { if (bannedUsers.includes(uname)) return; setBannedUsers(prev => [...prev, uname]); setDeals(prev => [...prev, { id: Date.now(), user: "سیستم", text: uname + " از گپ بن شد.", time: ts(), img: null, type: "system" }]); showToast("کاربر بن شد"); };
+      const sendAdminChat = () => { if (!admChatInput.trim()) return; setDeals(prev => [...prev, { id: Date.now(), user: "ادمین", text: admChatInput.trim(), time: ts(), img: null, type: "admin" }]); setAdmChatInput(""); };
+      const sendPm = () => { if (!pmInput.trim()) return; setPms(prev => ({ ...prev, [chatUsername]: [...(prev[chatUsername] || []), { id: Date.now(), from: "user", text: pmInput.trim(), time: ts() }] })); setPmInput(""); setShowPmModal(false); showToast("ارسال شد"); };
+      const sendAdminPm = (uname) => { if (!admPmInput.trim()) return; setPms(prev => ({ ...prev, [uname]: [...(prev[uname] || []), { id: Date.now(), from: "admin", text: admPmInput.trim(), time: ts() }] })); setAdmPmInput(""); showToast("پاسخ ارسال شد"); };
+      const handleAdminLogin = () => { if (adminPassInp === getAdminPass()) { setAdminLoggedIn(true); setLoginErr(""); setPage("admin"); } else setLoginErr("رمز اشتباه"); };
+      const updatePrice = (id) => { const p = parseInt(editPrices[id]); if (!p) return; setAccounts(prev => prev.map(a => a.id === id ? { ...a, price: p } : a)); showToast("قیمت آپدیت"); };
+      const deleteAcc = (id) => { setAccounts(prev => prev.filter(a => a.id !== id)); showToast("حذف شد"); };
+      const addAccount = () => { if (!newAcc.name || !newAcc.price) return; setAccounts(prev => [...prev, { id: Date.now(), ...newAcc, price: parseInt(newAcc.price), gems: parseInt(newAcc.gems) || 0, skins: parseInt(newAcc.skins) || 0, img: "🎮" }]); setNewAcc({ name: "", level: "برنز", gems: "", skins: "", price: "", desc: "" }); setShowAddAcc(false); showToast("اکانت اضافه شد"); };
+      const genInvCode = () => { const c = genCode(); setValidCodes(prev => [...prev, c]); setNewCode(c); showToast("کد: " + c); };
+      const changeAdminPassword = () => { if (newAdminPass.trim().length < 4) { showToast("حداقل ۴ کاراکتر"); return; } setAdminPass(newAdminPass); setNewAdminPass(""); setAdminSettingsOpen(false); showToast("رمز تغییر کرد"); };
+      const pmUsers = Object.keys(pms).filter(u => pms[u]?.length > 0);
+
+      return (
+        <div className="app">
+          <header className="hdr">
+            <div className="logo">FF<span>Shop</span></div>
+            <div className="nav">
+              <button className={`nb ${page === "shop" ? "on" : ""}`} onClick={() => setPage("shop")}>فروشگاه</button>
+              <button className={`nb ${page === "chat" ? "on" : ""}`} onClick={() => setPage("chat")}>گپ</button>
+              <button className={`nb ${page === "orders" ? "on" : ""}`} onClick={() => setPage("orders")}>سفارشات</button>
+              {!adminLoggedIn && <button className={`nb ${page === "login" ? "on" : ""}`} onClick={() => setPage("login")}>ورود مدیر</button>}
+              {adminLoggedIn && <button className={`nb ${page === "admin" ? "on" : ""}`} onClick={() => setPage("admin")}>پنل</button>}
+            </div>
+          </header>
+
+          {page === "shop" && (
+            <>
+              <div className="hero"><h1>خرید اکانت فری فایر</h1></div>
+              <div className="pgrid">
+                {accounts.map(a => (
+                  <div key={a.id} className="pcard">
+                    <div style={{ fontSize: 38, textAlign: "center" }}>{a.img}</div>
+                    <div style={{ fontWeight: "bold" }}>{a.name}</div>
+                    <div style={{ color: "#ff6b00", fontSize: 12 }}>رنک: {a.level}</div>
+                    <div style={{ fontSize: 12, color: "#aaa", margin: "6px 0" }}>{a.desc}</div>
+                    <div style={{ display: "flex", gap: 8, fontSize: 11, marginBottom: 8 }}><span>{a.gems} جم</span><span>{a.skins} اسکین</span></div>
+                    <div style={{ fontSize: 17, fontWeight: "bold", color: "#ffcc00", marginBottom: 10 }}>{fmtP(a.price)}</div>
+                    <button className="buy-btn" onClick={() => openBuy(a)}>خرید</button>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {page === "chat" && (
+            <div style={{ padding: "12px", maxWidth: 700, margin: "0 auto", width: "100%" }}>
+              <h2 style={{ color: "#ff6b00", fontSize: 18 }}>گپ معامله</h2>
+              {!chatJoined ? (
+                <div style={{ background: "#12121f", padding: 20, borderRadius: 16, marginTop: 12 }}>
+                  <input placeholder="نام کاربری" value={chatUsername} onChange={e => setChatUsername(e.target.value)} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #333", borderRadius: 10, padding: 10, marginBottom: 8, color: "#fff" }} />
+                  <input placeholder="کد دعوت (WELCOME)" value={chatCode} onChange={e => setChatCode(e.target.value.toUpperCase())} style={{ width: "100%", background: "#1a1a2e", border: "1px solid #333", borderRadius: 10, padding: 10, marginBottom: 12, color: "#fff" }} />
+                  <button className="bprim" onClick={joinChat}>ورود به گپ</button>
+                  {chatCodeErr && <div style={{ color: "red", marginTop: 8 }}>{chatCodeErr}</div>}
+                </div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", margin: "8px 0" }}><span style={{ color: "#0a0" }}>{chatUsername}</span><button className="nb" onClick={() => setShowPmModal(true)}>پیام خصوصی</button></div>
+                  <div className="cbox">
+                    {deals.map(msg => (
+                      <div key={msg.id} className={`msg ${msg.type === "admin" ? "admin-m" : msg.type === "system" ? "system-m" : "user-m"}`} style={{ alignSelf: msg.type === "user" ? "flex-end" : "flex-start", maxWidth: "85%" }}>
+                        <div className="msg-bbl">
+                          {msg.type !== "system" && <span style={{ fontSize: 10, color: "#ff6b00" }}>{msg.user}</span>}
+                          <div>{msg.text}</div>
+                          {msg.img && <img src={msg.img} className="msg-img" onClick={() => setZoomedImg(msg.img)} />}
+                        </div>
+                        <div style={{ fontSize: 9, color: "#555", marginTop: 2 }}>{msg.time}</div>
+                      </div>
+                    ))}
+                    <div ref={chatEndRef} />
+                  </div>
+                  <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                    <button onClick={() => chatImgRef.current?.click()} style={{ background: "#1a1a2e", border: "1px solid #333", borderRadius: 8, padding: "0 12px" }}>📷</button>
+                    <input type="file" accept="image/*" ref={chatImgRef} style={{ display: "none" }} onChange={sendImgInChat} />
+                    <textarea className="chat-ta" value={chatInput} onChange={e => setChatInput(e.target.value)} onKeyDown={e => e.key === "Enter" && !e.shiftKey && sendDeal()} placeholder="پیام..." />
+                    <button onClick={sendDeal} style={{ background: "#ff6b00", border: "none", borderRadius: 8, padding: "0 16px", fontWeight: "bold" }}>ارسال</button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {page === "orders" && (
+            <div style={{ padding: 16 }}>
+              <h2 style={{ color: "#ff6b00", fontSize: 18 }}>سفارشات من</h2>
+              {orders.length === 0 ? <div className="empty">سفارشی نیست</div> : orders.map(o => (
+                <div key={o.id} className="oc"><div><strong>{o.id}</strong> - {o.account.name} - {fmtP(o.account.price)}</div><div>{o.name}</div>{o.receiptImg && <img src={o.receiptImg} style={{ width: 60, borderRadius: 6, marginTop: 6 }} onClick={() => setZoomedImg(o.receiptImg)} />}</div>
+              ))}
+            </div>
+          )}
+
+          {page === "login" && (
+            <div style={{ display: "flex", justifyContent: "center", padding: 32 }}>
+              <div className="modal"><h2>ورود مدیر</h2><input type="password" placeholder="رمز" value={adminPassInp} onChange={e => setAdminPassInp(e.target.value)} style={{ width: "100%", marginBottom: 12, padding: 8, background: "#1a1a2e", border: "1px solid #333", borderRadius: 8, color: "#fff" }} /><button className="bprim" onClick={handleAdminLogin}>ورود</button>{loginErr && <div style={{ color: "red" }}>{loginErr}</div>}</div>
+            </div>
+          )}
+
+          {page === "admin" && adminLoggedIn && (
+            <div style={{ padding: 16 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><h2 style={{ color: "#ff6b00" }}>پنل مدیر</h2><button className="nb" onClick={() => setAdminSettingsOpen(!adminSettingsOpen)}>تغییر رمز</button></div>
+              {adminSettingsOpen && <div style={{ background: "#1a1a2e", padding: 12, borderRadius: 12, margin: "10px 0" }}><input type="password" placeholder="رمز جدید" value={newAdminPass} onChange={e => setNewAdminPass(e.target.value)} style={{ width: "100%", padding: 8, marginBottom: 8, borderRadius: 8, border: "1px solid #333", background: "#0a0a0f", color: "#fff" }} /><button className="bprim" onClick={changeAdminPassword}>ذخیره رمز</button></div>}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>{[["orders","سفارشات"],["chat","گپ"],["pm","پیام‌ها"],["accounts","اکانت‌ها"],["codes","کدها"]].map(([k,v]) => <button key={k} className={`adm-tab`} onClick={()=>setAdmTab(k)} style={{ background: "#1a1a2e", border: admTab===k?"2px solid #ff6b00":"2px solid transparent", padding: "5px 12px", borderRadius: 30, color: "#fff", cursor:"pointer" }}>{v}</button>)}</div>
+              
+              {admTab==="orders" && orders.map(o=><div key={o.id} className="oc"><div>{o.id} - {o.account.name} - {fmtP(o.account.price)}</div><div>{o.name} | {o.phone}</div>{o.receiptImg && <img src={o.receiptImg} style={{ width: 50 }} onClick={()=>setZoomedImg(o.receiptImg)} />}{o.status!=="تایید شده" && <button onClick={()=>confirmOrder(o.id)} style={{ background:"#0a0", border:"none", padding:"4px 12px", borderRadius:6, marginTop:6, color:"#fff" }}>تایید</button>}</div>)}
+              
+              {admTab==="chat" && (
+                <>
+                  <div className="cbox" style={{height:280}}>
+                    {deals.map(msg=>(
+                      <div key={msg.id} style={{display:"flex", justifyContent:"space-between", background:"#1a1a2e", padding:6, borderRadius:8, marginBottom:4, alignItems:"center"}}>
+                        <div><strong style={{color:msg.type==="admin"?"#ff6b00":"#aaa"}}>{msg.user}:</strong> {msg.text}</div>
+                        <div style={{display:"flex", gap:4}}>
+                          {msg.type==="user" && (
+                            <>
+                              <button onClick={()=>deleteMsg(msg.id)} style={{background:"red", border:"none", borderRadius:4, padding:"2px 8px", color:"#fff"}}>حذف</button>
+                              <button onClick={()=>banUser(msg.user)} style={{background:"#660", border:"none", borderRadius:4, padding:"2px 8px", color:"#fff"}}>بن</button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{display:"flex", gap:6, marginTop:8}}>
+                    <textarea className="chat-ta" value={admChatInput} onChange={e=>setAdmChatInput(e.target.value)} placeholder="پیام عمومی به عنوان ادمین..." />
+                    <button onClick={sendAdminChat} className="bprim" style={{width:"auto", padding:"0 16px"}}>ارسال</button>
+                  </div>
+                </>
+              )}
+              
+              {admTab==="pm" && (<div>{!selPmUser ? pmUsers.map(u=><div key={u} onClick={()=>setSelPmUser(u)} style={{background:"#12121f", padding:12, borderRadius:12, marginBottom:6, cursor:"pointer"}}>{u}</div>) : (<><button onClick={()=>setSelPmUser(null)} style={{background:"#333", border:"none", padding:"4px 12px", borderRadius:6, marginBottom:8}}>بازگشت</button><div className="cbox" style={{height:260}}>{(pms[selPmUser]||[]).map(m=><div key={m.id} className={`msg ${m.from==="admin"?"user-m":"admin-m"}`}><div className="msg-bbl">{m.text}<div style={{fontSize:10, marginTop:4}}>{m.time}</div></div></div>)}</div><div style={{display:"flex", gap:6, marginTop:8}}><input style={{flex:1, background:"#1a1a2e", padding:8, borderRadius:8, border:"1px solid #333", color:"#fff"}} placeholder="پاسخ..." value={admPmInput} onChange={e=>setAdmPmInput(e.target.value)} /><button className="bprim" onClick={()=>sendAdminPm(selPmUser)} style={{width:"auto", padding:"0 16px"}}>ارسال</button></div></>)}</div>)}
+              
+              {admTab==="accounts" && (<><button onClick={()=>setShowAddAcc(!showAddAcc)} style={{background:"#ff6b00", border:"none", padding:"8px 16px", borderRadius:8, marginBottom:12}}>+ اکانت جدید</button>{showAddAcc && (<div style={{background:"#12121f", padding:12, margin:"12px 0"}}><input placeholder="نام" value={newAcc.name} onChange={e=>setNewAcc({...newAcc,name:e.target.value})} style={{width:"100%", marginBottom:6, padding:8, background:"#1a1a2e", border:"1px solid #333", borderRadius:8}}/><input placeholder="قیمت" type="number" value={newAcc.price} onChange={e=>setNewAcc({...newAcc,price:e.target.value})} style={{width:"100%", marginBottom:6, padding:8, background:"#1a1a2e", border:"1px solid #333", borderRadius:8}}/><button className="bprim" onClick={addAccount}>ذخیره</button></div>)}<div>{accounts.map(a=><div key={a.id} style={{background:"#12121f", padding:12, marginBottom:8, borderRadius:12}}><div>{a.name} - {fmtP(a.price)}</div><div style={{display:"flex", gap:6, marginTop:6}}><input type="number" placeholder="قیمت جدید" value={editPrices[a.id]||""} onChange={e=>setEditPrices({...editPrices,[a.id]:e.target.value})} style={{width:"100px", background:"#1a1a2e", border:"1px solid #333", borderRadius:6, padding:4}}/><button onClick={()=>updatePrice(a.id)} style={{background:"#ff6b00", border:"none", padding:"4px 12px", borderRadius:6}}>ویرایش</button><button onClick={()=>deleteAcc(a.id)} style={{background:"#a00", border:"none", padding:"4px 12px", borderRadius:6}}>حذف</button></div></div>)}</div></>)}
+              
+              {admTab==="codes" && (<><button onClick={genInvCode} style={{background:"#0a0", border:"none", padding:"8px 16px", borderRadius:8, marginBottom:8}}>کد جدید</button><div>کدهای فعال: {validCodes.join(", ")}</div><button onClick={()=>{const c=prompt("کد دستی"); if(c) setValidCodes(prev=>[...prev, c.toUpperCase()]);}} style={{background:"#ff6b00", marginTop:8, border:"none", padding:"6px 12px", borderRadius:8}}>افزودن کد</button><div style={{marginTop:12}}>بن‌شده‌ها: {bannedUsers.join(", ")}</div></>)}
+            </div>
+          )}
+
+          {selAcc && (
+            <div className="mbg" onClick={e=>e.target===e.currentTarget&&setSelAcc(null)}>
+              <div className="modal">
+                {buyStep===1 ? (<><h2>خرید {selAcc.name}</h2><div className="fld"><label>نام</label><input value={buyForm.name} onChange={e=>setBuyForm({...buyForm,name:e.target.value})} /></div><div className="fld"><label>شماره</label><input value={buyForm.phone} onChange={e=>setBuyForm({...buyForm,phone:e.target.value})} /></div><div className="fld"><label>رسید</label><div onClick={()=>rcRef.current?.click()} style={{border:"2px dashed #ff6b00", padding:12, textAlign:"center", borderRadius:12}}><input type="file" ref={rcRef} style={{display:"none"}} onChange={handleRcUpload} />{rcPrev?<img src={rcPrev} style={{maxWidth:"100%", maxHeight:100}}/>:"آپلود رسید"}</div></div><div style={{background:"#1a1a00", padding:12, borderRadius:12, margin:"10px 0"}}><div>شماره کارت: 6280-2314-9744-3886</div><div>به نام امیرحسین ویسمرادی</div><div style={{color:"#ffcc00"}}>{fmtP(selAcc.price)}</div></div><div style={{display:"flex", gap:8}}><button className="bsec" onClick={()=>setSelAcc(null)}>انصراف</button><button className="bprim" onClick={submitOrder} disabled={!buyForm.name||!buyForm.phone||!rcFile}>ثبت</button></div></>) : (<><h2>سفارش ثبت شد</h2>{curOrder && <div>کد پیگیری: {curOrder.id}</div>}<button className="bprim" onClick={()=>setSelAcc(null)} style={{marginTop:16}}>بستن</button></>)}
+              </div>
+            </div>
+          )}
+
+          {showPmModal && (
+            <div className="mbg" onClick={e=>e.target===e.currentTarget&&setShowPmModal(false)}>
+              <div className="modal"><h3>پیام خصوصی</h3><div className="cbox" style={{height:200}}>{(pms[chatUsername]||[]).map(m=><div key={m.id} className="msg-bbl" style={{marginBottom:4}}>{m.text}<div style={{fontSize:10, marginTop:4}}>{m.time}</div></div>)}</div><div style={{display:"flex", gap:6}}><input style={{flex:1, background:"#1a1a2e", padding:8, borderRadius:8, border:"1px solid #333", color:"#fff"}} value={pmInput} onChange={e=>setPmInput(e.target.value)} placeholder="پیام به ادمین..." /><button className="bprim" onClick={sendPm} style={{width:"auto", padding:"0 16px"}}>ارسال</button></div><button className="bsec" onClick={()=>setShowPmModal(false)} style={{marginTop:8}}>بستن</button></div>
+            </div>
+          )}
+
+          {zoomedImg && <div style={{position:"fixed", inset:0, background:"rgba(0,0,0,0.95)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:400}} onClick={()=>setZoomedImg(null)}><img src={zoomedImg} style={{maxWidth:"90vw", maxHeight:"90vh", borderRadius:12}} /></div>}
+          <footer className="footer">FFShop | فروشگاه اکانت فری فایر</footer>
+          {toastMsg && <div className="toast">{toastMsg}</div>}
+        </div>
+      );
+    }
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
